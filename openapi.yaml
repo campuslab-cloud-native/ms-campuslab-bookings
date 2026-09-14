@@ -217,9 +217,9 @@ components:
     BookingStatus:
       type: string
       enum:
-        - SOLICITADA
-        - APROBADA
-        - EN_PREPARACION
-        - EN_USO
-        - DEVUELTA
-        - CANCELADA
+        - REQUESTED
+        - APPROVED
+        - IN_PREPARATION
+        - IN_USE
+        - RETURNED
+        - CANCELLED
