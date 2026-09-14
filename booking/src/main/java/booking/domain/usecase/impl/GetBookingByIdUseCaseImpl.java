@@ -15,7 +15,7 @@ public class GetBookingByIdUseCaseImpl implements GetBookingByIdUseCase {
 
     @Override
     public Booking execute(Long id) {
-        return repository.findByid(id)
+        return repository.findById(id)
                 .orElseThrow(() ->
                         new BookingNotFoundException(id)
                 );

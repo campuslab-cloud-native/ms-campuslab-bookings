@@ -13,7 +13,7 @@ public interface BookingRepository {
             LocalDate from,
             LocalDate to
     );
-    Optional<Booking> findByid(Long id);
+    Optional<Booking> findById(Long id);
 
     Booking save(Booking booking);
 }

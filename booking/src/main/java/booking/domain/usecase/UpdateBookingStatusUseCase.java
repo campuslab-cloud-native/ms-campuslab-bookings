@@ -3,7 +3,7 @@ package booking.domain.usecase;
 import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
 
-public interface UpdateBookingstatusUseCase {
+public interface UpdateBookingStatusUseCase {
 
     Booking execute(Long id, BookingStatus status);
 }

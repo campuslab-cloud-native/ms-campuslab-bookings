@@ -5,18 +5,18 @@ import booking.common.exception.InvalidBookingStatusException;
 import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
 import booking.domain.repository.BookingRepository;
-import booking.domain.usecase.UpdateBookingstatusUseCase;
+import booking.domain.usecase.UpdateBookingStatusUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class UpdateBookingUseCaseImpl implements UpdateBookingstatusUseCase {
+public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
 
     private final BookingRepository repository;
     @Override
     public Booking execute(Long id, BookingStatus newStatus) {
-        Booking booking = repository.findByid(id)
+        Booking booking = repository.findById(id)
                 .orElseThrow(() ->
                 new BookingNotFoundException(id)
                 );
@@ -36,7 +36,7 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingstatusUseCase {
 
             throw new InvalidBookingStatusException(
                     "Booking must be approved before entering IN_USE"
-            )
+            );
         }
     }
 }
