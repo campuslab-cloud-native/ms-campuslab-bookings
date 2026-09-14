@@ -23,7 +23,7 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
 
         validateStatusChange(booking, newStatus);
 
-        booking.setStatus(booking.getStatus());
+        booking.setStatus(newStatus);
 
         return repository.save(booking)
         ;
