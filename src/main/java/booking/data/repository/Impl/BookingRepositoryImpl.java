@@ -11,6 +11,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -36,44 +37,61 @@ public class BookingRepositoryImpl implements BookingRepository {
 
     @Override
     public List<Booking> findByFilters(
-        BookingStatus status,
-        LocalDate from,
-        LocalDate to) {
+            BookingStatus status,
+            LocalDate from,
+            LocalDate to
+    ) {
 
         Specification<BookingEntity> specification =
-                ((root, query, criteriaBuilder) ->
-                        criteriaBuilder.conjunction());
+                (root, query, criteriaBuilder) ->
+                        criteriaBuilder.conjunction();
 
         if (status != null) {
             specification = specification.and(
-                (root, query, criteriaBuilder) ->
-                    criteriaBuilder.equal(
-                        root.get("status"), 
-                        status)
-                    );
+                    (root, query, criteriaBuilder) ->
+                            criteriaBuilder.equal(
+                                    root.get("status"),
+                                    status
+                            )
+            );
         }
+
         if (from != null) {
             specification = specification.and(
-                (root, query, criteriaBuilder) ->
-                    criteriaBuilder.greaterThanOrEqualTo(
-                        root.get("startTime"), 
-                        from.atStartOfDay()
-                    )
+                    (root, query, criteriaBuilder) ->
+                            criteriaBuilder.greaterThanOrEqualTo(
+                                    root.get("startTime"),
+                                    from.atStartOfDay()
+                            )
             );
         }
+
         if (to != null) {
             specification = specification.and(
-                (root, query, criteriaBuilder) ->
-                    criteriaBuilder.lessThanOrEqualTo(
-                        root.get("startTime"), 
-                        to.atStartOfDay()
-                    )
+                    (root, query, criteriaBuilder) ->
+                            criteriaBuilder.lessThanOrEqualTo(
+                                    root.get("startTime"),
+                                    to.atStartOfDay()
+                            )
             );
         }
+
         return bookingJpaRepository.findAll(specification)
-            .stream()
-            .map(bookingDataMapper::toDomain)
-            .toList();
+                .stream()
+                .map(bookingDataMapper::toDomain)
+                .toList();
     }
 
+    @Override
+    public boolean existsConflict(
+            Long resourceId,
+            LocalDateTime start,
+            LocalDateTime end
+    ) {
+        return bookingJpaRepository.existsConflict(
+                resourceId,
+                start,
+                end
+        );
+    }
 }
