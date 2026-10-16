@@ -16,24 +16,45 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleResourceNotFound(
             BookingNotFoundException exception) {
 
-        Map<String, String> response = new HashMap<>();
-        response.put("message", exception.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(Map.of("message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(BookingResourceNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleBookingResourceNotFound(
+            BookingResourceNotFoundException exception) {
 
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
-                .body(response);
+                .body(Map.of("message", exception.getMessage()));
     }
 
     @ExceptionHandler(BookingConflictException.class)
     public ResponseEntity<Map<String, String>> handleBookingConflict(
             BookingConflictException exception) {
 
-        Map<String, String> response = new HashMap<>();
-        response.put("message", exception.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of("message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidBookingStatusException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidBookingStatus(
+            InvalidBookingStatusException exception) {
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
-                .body(response);
+                .body(Map.of("message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(BookingRuleViolationException.class)
+    public ResponseEntity<Map<String, String>> handleBookingRuleViolation(
+            BookingRuleViolationException exception) {
+
+        return ResponseEntity
+                .badRequest()
+                .body(Map.of("message", exception.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

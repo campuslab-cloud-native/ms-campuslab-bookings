@@ -35,7 +35,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/BookingResponse'
         '400':
-          description: Solicitud inválida
+          description: Fecha, hora o duración de la reserva inválida
+        '404':
+          description: Recurso inexistente
+        '409':
+          description: El recurso no tiene cupos disponibles
         '401':
           description: No autenticado
         '403':
@@ -149,6 +153,8 @@ paths:
                 $ref: '#/components/schemas/BookingResponse'
         '400':
           description: Cambio de estado inválido
+        '409':
+          description: Transición de estado no permitida
         '404':
           description: Reserva no encontrada
         '401':
@@ -220,6 +226,8 @@ components:
         - REQUESTED
         - APPROVED
         - IN_PREPARATION
+        - READY
         - IN_USE
+        - TERMINATED
         - RETURNED
         - CANCELLED

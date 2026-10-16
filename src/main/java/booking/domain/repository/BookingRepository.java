@@ -4,7 +4,7 @@ import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,11 +18,9 @@ public interface BookingRepository {
 
     Optional<Booking> findById(Long id);
 
-    boolean existsConflict(
-            Long resourceId,
-            LocalDateTime start,
-            LocalDateTime end
-    );
+    Optional<Booking> findByIdForUpdate(Long id);
+
+    List<Booking> findByStatuses(Collection<BookingStatus> statuses);
 
     Booking save(Booking booking);
 }

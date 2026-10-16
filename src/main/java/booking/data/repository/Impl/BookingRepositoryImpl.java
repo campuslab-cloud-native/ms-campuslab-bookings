@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,20 @@ public class BookingRepositoryImpl implements BookingRepository {
     public Optional<Booking> findById(Long id) {
         return bookingJpaRepository.findById(id)
                 .map(bookingDataMapper::toDomain);
+    }
+
+    @Override
+    public Optional<Booking> findByIdForUpdate(Long id) {
+        return bookingJpaRepository.findByIdForUpdate(id)
+                .map(bookingDataMapper::toDomain);
+    }
+
+    @Override
+    public List<Booking> findByStatuses(Collection<BookingStatus> statuses) {
+        return bookingJpaRepository.findByStatusIn(statuses)
+                .stream()
+                .map(bookingDataMapper::toDomain)
+                .toList();
     }
 
     @Override
@@ -82,16 +97,4 @@ public class BookingRepositoryImpl implements BookingRepository {
                 .toList();
     }
 
-    @Override
-    public boolean existsConflict(
-            Long resourceId,
-            LocalDateTime start,
-            LocalDateTime end
-    ) {
-        return bookingJpaRepository.existsConflict(
-                resourceId,
-                start,
-                end
-        );
-    }
 }
