@@ -45,7 +45,10 @@ public class CreateBookingUseCaseImpl implements CreateBookingUseCase {
             return savedBooking;
         } catch (RuntimeException exception) {
             try {
-                catalogAvailabilityClient.release(booking.getResourceId());
+                catalogAvailabilityClient.release(
+                        booking.getResourceId(),
+                        "booking-compensation:" + UUID.randomUUID()
+                );
             } catch (RuntimeException compensationException) {
                 exception.addSuppressed(compensationException);
                 log.error(

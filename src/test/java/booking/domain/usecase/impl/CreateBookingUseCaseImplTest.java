@@ -88,6 +88,9 @@ class CreateBookingUseCaseImplTest {
         assertThrows(AmqpException.class, () -> useCase.execute(booking));
 
         verify(catalogAvailabilityClient).reserve(7L);
-        verify(catalogAvailabilityClient).release(7L);
+        verify(catalogAvailabilityClient).release(
+                org.mockito.ArgumentMatchers.eq(7L),
+                org.mockito.ArgumentMatchers.startsWith("booking-compensation:")
+        );
     }
 }

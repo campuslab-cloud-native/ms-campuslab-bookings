@@ -19,21 +19,34 @@ public class CatalogAvailabilityClient {
         sendAvailabilityRequest(resourceId, "reserve");
     }
 
-    public void release(Long resourceId) {
-        sendAvailabilityRequest(resourceId, "release");
+    public void release(Long resourceId, String operationId) {
+        sendAvailabilityRequest(resourceId, "release", operationId);
     }
 
     private void sendAvailabilityRequest(Long resourceId, String action) {
+        sendAvailabilityRequest(resourceId, action, null);
+    }
+
+    private void sendAvailabilityRequest(
+            Long resourceId,
+            String action,
+            String operationId
+    ) {
         try {
-            restClient.post()
+            var request = restClient.post()
                     .uri(catalogServiceUrl + "/api/catalog/resources/"
-                            + resourceId + "/availability/" + action)
-                    .retrieve()
-                    .toBodilessEntity();
+                            + resourceId + "/availability/" + action);
+            if (operationId != null) {
+                request.header("Idempotency-Key", operationId);
+            }
+            request.retrieve().toBodilessEntity();
         } catch (HttpClientErrorException.Conflict exception) {
-            throw new BookingConflictException(
-                    "No hay cupos disponibles para el recurso " + resourceId
-            );
+            if ("reserve".equals(action)) {
+                throw new BookingConflictException(
+                        "No hay cupos disponibles para el recurso " + resourceId
+                );
+            }
+            throw exception;
         } catch (HttpClientErrorException.NotFound exception) {
             throw new BookingResourceNotFoundException(resourceId);
         }

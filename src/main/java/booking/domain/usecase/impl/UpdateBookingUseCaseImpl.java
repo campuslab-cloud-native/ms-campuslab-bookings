@@ -32,7 +32,10 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
         booking.setStatus(newStatus);
         Booking savedBooking = repository.save(booking);
         if (newStatus == BookingStatus.CANCELLED) {
-            catalogAvailabilityClient.release(booking.getResourceId());
+            catalogAvailabilityClient.release(
+                    booking.getResourceId(),
+                    "booking:" + booking.getId()
+            );
         }
         return savedBooking;
     }
@@ -51,7 +54,10 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
         booking.setStatus(nextStatus);
         Booking savedBooking = repository.save(booking);
         if (nextStatus == BookingStatus.TERMINATED) {
-            catalogAvailabilityClient.release(booking.getResourceId());
+            catalogAvailabilityClient.release(
+                    booking.getResourceId(),
+                    "booking:" + booking.getId()
+            );
         }
         return savedBooking;
     }

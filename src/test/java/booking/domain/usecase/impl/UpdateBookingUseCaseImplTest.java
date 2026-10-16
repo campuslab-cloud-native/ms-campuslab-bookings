@@ -67,7 +67,7 @@ class UpdateBookingUseCaseImplTest {
         useCase.advanceAutomatically(1L);
 
         assertEquals(BookingStatus.TERMINATED, booking.getStatus());
-        verify(catalogAvailabilityClient).release(7L);
+        verify(catalogAvailabilityClient).release(7L, "booking:1");
     }
 
     @Test
@@ -80,7 +80,7 @@ class UpdateBookingUseCaseImplTest {
         useCase.execute(1L, BookingStatus.CANCELLED);
 
         assertEquals(BookingStatus.CANCELLED, booking.getStatus());
-        verify(catalogAvailabilityClient).release(7L);
+        verify(catalogAvailabilityClient).release(7L, "booking:1");
     }
 
     @Test
@@ -97,7 +97,7 @@ class UpdateBookingUseCaseImplTest {
                 InvalidBookingStatusException.class,
                 () -> useCase.execute(1L, BookingStatus.CANCELLED)
         );
-        verify(catalogAvailabilityClient, never()).release(7L);
+        verify(catalogAvailabilityClient, never()).release(7L, "booking:1");
     }
 
     private Booking booking(
