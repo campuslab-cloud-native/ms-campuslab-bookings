@@ -13,4 +13,6 @@ public interface GetBookingsUseCase {
             LocalDate from,
             LocalDate to
     );
+
+    List<Booking> executeByUserId(String userId);
 }

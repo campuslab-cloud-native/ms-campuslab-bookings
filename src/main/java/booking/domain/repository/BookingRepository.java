@@ -16,6 +16,8 @@ public interface BookingRepository {
             LocalDate to
     );
 
+    List<Booking> findByUserId(String userId);
+
     Optional<Booking> findById(Long id);
 
     Optional<Booking> findByIdForUpdate(Long id);

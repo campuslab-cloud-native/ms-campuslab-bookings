@@ -22,7 +22,7 @@ public class BookingEntity {
     @Column(name = "resource_id", nullable = false)
     private Long resourceId;
     
-    @Column(name = "user_id", nullable = true)//cambiar mas adelante cuandos se integre azure/jwt
+    @Column(name = "user_id", nullable = true)
     private String userId;
 
     @Column(name = "start_time", nullable = false)

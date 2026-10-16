@@ -37,6 +37,14 @@ public class BookingRepositoryImpl implements BookingRepository {
     }
 
     @Override
+    public List<Booking> findByUserId(String userId) {
+        return bookingJpaRepository.findByUserId(userId)
+                .stream()
+                .map(bookingDataMapper::toDomain)
+                .toList();
+    }
+
+    @Override
     public Optional<Booking> findByIdForUpdate(Long id) {
         return bookingJpaRepository.findByIdForUpdate(id)
                 .map(bookingDataMapper::toDomain);

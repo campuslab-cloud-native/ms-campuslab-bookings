@@ -21,6 +21,13 @@ paths:
       operationId: createBooking
       security:
         - bearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          description: Identificador del usuario asignado por el BFF
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -76,6 +83,35 @@ paths:
       responses:
         '200':
           description: Reservas encontradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookingResponse'
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado
+
+  /api/bookings/user/{userId}:
+
+    get:
+      tags:
+        - Bookings
+      summary: Listar reservas de un usuario
+      operationId: getBookingsByUserId
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reservas del usuario encontradas
           content:
             application/json:
               schema:

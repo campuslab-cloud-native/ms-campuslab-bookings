@@ -32,9 +32,11 @@ public class BookingController {
 
     @PostMapping
     public ResponseEntity<BookingResponse> createBooking(
+            @RequestParam(required = false) String userId,
             @Valid @RequestBody CreateBookingRequest request) {
 
         var booking = bookingPresentationMapper.toDomain(request);
+        booking.setUserId(userId);
 
         var createdBooking = createBookingUseCase.execute(booking);
 
@@ -65,6 +67,18 @@ public class BookingController {
             LocalDate to) {
 
         var bookings = getBookingsUseCase.execute(status, from, to)
+                .stream()
+                .map(bookingPresentationMapper::toResponse)
+                .toList();
+
+        return ResponseEntity.ok(bookings);
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<BookingResponse>> getBookingsByUserId(
+            @PathVariable String userId) {
+
+        var bookings = getBookingsUseCase.executeByUserId(userId)
                 .stream()
                 .map(bookingPresentationMapper::toResponse)
                 .toList();

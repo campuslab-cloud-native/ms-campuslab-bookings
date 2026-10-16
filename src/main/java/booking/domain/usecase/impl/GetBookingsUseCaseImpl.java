@@ -24,4 +24,9 @@ public class GetBookingsUseCaseImpl implements GetBookingsUseCase {
 
         return repository.findByFilters(status,from,to);
     }
+
+    @Override
+    public List<Booking> executeByUserId(String userId) {
+        return repository.findByUserId(userId);
+    }
 }

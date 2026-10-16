@@ -21,4 +21,6 @@ public interface BookingJpaRepository
     java.util.Optional<BookingEntity> findByIdForUpdate(@Param("id") Long id);
 
     List<BookingEntity> findByStatusIn(Collection<BookingStatus> statuses);
+
+    List<BookingEntity> findByUserId(String userId);
 }
