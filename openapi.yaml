@@ -25,7 +25,7 @@ paths:
         - name: userId
           in: query
           required: false
-          description: Identificador del usuario asignado por el BFF
+          description: Correo electrónico del usuario autenticado, asignado por el BFF
           schema:
             type: string
       requestBody:
