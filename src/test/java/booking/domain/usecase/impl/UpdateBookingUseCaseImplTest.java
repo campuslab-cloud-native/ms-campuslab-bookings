@@ -1,6 +1,8 @@
 package booking.domain.usecase.impl;
 
 import booking.common.exception.InvalidBookingStatusException;
+import booking.common.exception.BookingNotFoundException;
+import booking.common.exception.BookingRuleViolationException;
 import booking.data.exchange.catalog.CatalogAvailabilityClient;
 import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
@@ -122,6 +124,114 @@ class UpdateBookingUseCaseImplTest {
 
         assertEquals(BookingStatus.APPROVED, booking.getStatus());
         verify(notificationPublisher).publishBookingApproved(booking);
+    }
+
+    @Test
+    void adminCanMoveApprovedBookingToPreparation() {
+        Booking booking = booking(
+                BookingStatus.APPROVED,
+                LocalDateTime.now().plusHours(1),
+                LocalDateTime.now().plusHours(2)
+        );
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
+        when(repository.save(booking)).thenReturn(booking);
+
+        useCase.forceUpdateStatus(1L, BookingStatus.IN_PREPARATION);
+
+        assertEquals(BookingStatus.IN_PREPARATION, booking.getStatus());
+        verify(notificationPublisher, never()).publishBookingApproved(booking);
+        verify(notificationPublisher, never()).publishBookingReturned(booking);
+    }
+
+    @Test
+    void adminCanMovePreparationBookingToInUse() {
+        Booking booking = booking(
+                BookingStatus.IN_PREPARATION,
+                LocalDateTime.now().plusHours(1),
+                LocalDateTime.now().plusHours(2)
+        );
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
+        when(repository.save(booking)).thenReturn(booking);
+
+        useCase.forceUpdateStatus(1L, BookingStatus.IN_USE);
+
+        assertEquals(BookingStatus.IN_USE, booking.getStatus());
+        verifyNoInteractions(notificationPublisher, catalogAvailabilityClient);
+    }
+
+    @Test
+    void adminCanReturnInUseBookingAndPublishesVoucherCommand() {
+        Booking booking = booking(
+                BookingStatus.IN_USE,
+                LocalDateTime.now().minusHours(1),
+                LocalDateTime.now().plusHours(1)
+        );
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
+        when(repository.save(booking)).thenReturn(booking);
+
+        useCase.forceUpdateStatus(1L, BookingStatus.RETURNED);
+
+        assertEquals(BookingStatus.RETURNED, booking.getStatus());
+        verify(notificationPublisher).publishBookingReturned(booking);
+        verify(catalogAvailabilityClient).release(7L, "booking:1");
+    }
+
+    @Test
+    void adminCanApproveBookingAndPublishesPreparationCommand() {
+        Booking booking = booking(
+                BookingStatus.REQUESTED,
+                LocalDateTime.now().plusHours(1),
+                LocalDateTime.now().plusHours(2)
+        );
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
+        when(repository.save(booking)).thenReturn(booking);
+
+        useCase.forceUpdateStatus(1L, BookingStatus.APPROVED);
+
+        verify(notificationPublisher).publishBookingApproved(booking);
+    }
+
+    @Test
+    void adminUpdateFailsWhenBookingDoesNotExist() {
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.empty());
+
+        assertThrows(
+                BookingNotFoundException.class,
+                () -> useCase.forceUpdateStatus(1L, BookingStatus.IN_PREPARATION)
+        );
+    }
+
+    @Test
+    void adminUpdateRejectsMissingStatus() {
+        Booking booking = booking(
+                BookingStatus.APPROVED,
+                LocalDateTime.now().plusHours(1),
+                LocalDateTime.now().plusHours(2)
+        );
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
+
+        assertThrows(
+                BookingRuleViolationException.class,
+                () -> useCase.forceUpdateStatus(1L, null)
+        );
+    }
+
+    @Test
+    void normalStatusEndpointStillRejectsLifecycleTransition() {
+        Booking booking = booking(
+                BookingStatus.APPROVED,
+                LocalDateTime.now().plusHours(1),
+                LocalDateTime.now().plusHours(2)
+        );
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
+
+        assertThrows(
+                InvalidBookingStatusException.class,
+                () -> useCase.execute(1L, BookingStatus.IN_PREPARATION)
+        );
+
+        assertEquals(BookingStatus.APPROVED, booking.getStatus());
+        verify(repository, never()).save(booking);
     }
 
     @Test

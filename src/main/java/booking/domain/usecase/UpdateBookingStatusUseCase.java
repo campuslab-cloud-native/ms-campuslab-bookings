@@ -7,5 +7,7 @@ public interface UpdateBookingStatusUseCase {
 
     Booking execute(Long id, BookingStatus status);
 
+    Booking forceUpdateStatus(Long id, BookingStatus status);
+
     Booking advanceAutomatically(Long id);
 }

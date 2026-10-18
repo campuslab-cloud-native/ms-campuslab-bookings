@@ -198,6 +198,41 @@ paths:
         '403':
           description: No autorizado
 
+  /api/v1/bookings/{id}/admin-status:
+
+    put:
+      tags:
+        - Bookings
+      summary: Actualizar manualmente el estado de una reserva
+      description: Cambio administrativo que no aplica las restricciones normales de transición; solo acepta estados definidos por el dominio.
+      operationId: updateBookingAdminStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBookingStatusRequest'
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '400':
+          description: Estado ausente o inválido
+        '404':
+          description: Reserva no encontrada
+
 components:
 
   securitySchemes:

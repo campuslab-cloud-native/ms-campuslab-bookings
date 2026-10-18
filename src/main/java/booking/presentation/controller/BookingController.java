@@ -100,4 +100,19 @@ public class BookingController {
                 bookingPresentationMapper.toResponse(booking)
         );
     }
+
+    @PutMapping("/{id}/admin-status")
+    public ResponseEntity<BookingResponse> updateBookingAdminStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateBookingStatusRequest request) {
+
+        var booking = updateBookingStatusUseCase.forceUpdateStatus(
+                id,
+                request.getStatus()
+        );
+
+        return ResponseEntity.ok(
+                bookingPresentationMapper.toResponse(booking)
+        );
+    }
 }

@@ -1,6 +1,7 @@
 package booking.domain.usecase.impl;
 
 import booking.common.exception.BookingNotFoundException;
+import booking.common.exception.BookingRuleViolationException;
 import booking.common.exception.InvalidBookingStatusException;
 import booking.data.exchange.catalog.CatalogAvailabilityClient;
 import booking.domain.model.Booking;
@@ -31,6 +32,23 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
                 );
 
         validateStatusChange(booking, newStatus);
+        return persistStatus(booking, newStatus);
+    }
+
+    @Override
+    @Transactional
+    public Booking forceUpdateStatus(Long id, BookingStatus newStatus) {
+        Booking booking = repository.findByIdForUpdate(id)
+                .orElseThrow(() -> new BookingNotFoundException(id));
+
+        if (newStatus == null) {
+            throw new BookingRuleViolationException("El estado es obligatorio");
+        }
+
+        return persistStatus(booking, newStatus);
+    }
+
+    private Booking persistStatus(Booking booking, BookingStatus newStatus) {
         booking.setStatus(newStatus);
         Booking savedBooking = repository.save(booking);
         if (newStatus == BookingStatus.APPROVED) {
