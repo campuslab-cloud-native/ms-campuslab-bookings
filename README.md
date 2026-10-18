@@ -22,17 +22,17 @@ Microservicio de gestión de reservas de CampusLab.
 ## Endpoints
 
 ```http
-POST /api/bookings
-GET /api/bookings
-GET /api/bookings/{id}
-PUT /api/bookings/{id}/status
+POST /api/v1/bookings
+GET /api/v1/bookings
+GET /api/v1/bookings/{id}
+PUT /api/v1/bookings/{id}/status
 ```
 
 ## Filtros
 
 ```http
-GET /api/bookings?status=APROBADA
-GET /api/bookings?from=2026-09-01&to=2026-09-30
+GET /api/v1/bookings?status=APROBADA
+GET /api/v1/bookings?from=2026-09-01&to=2026-09-30
 ```
 
 ## Estados

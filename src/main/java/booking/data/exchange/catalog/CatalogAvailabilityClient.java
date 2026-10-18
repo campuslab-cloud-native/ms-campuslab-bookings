@@ -34,7 +34,7 @@ public class CatalogAvailabilityClient {
     ) {
         try {
             var request = restClient.post()
-                    .uri(catalogServiceUrl + "/api/catalog/resources/"
+                    .uri(catalogServiceUrl + "/api/v1/catalog/resources/"
                             + resourceId + "/availability/" + action);
             if (operationId != null) {
                 request.header("Idempotency-Key", operationId);

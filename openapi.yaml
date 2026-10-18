@@ -12,7 +12,7 @@ tags:
 
 paths:
 
-  /api/bookings:
+  /api/v1/bookings:
 
     post:
       tags:
@@ -94,7 +94,7 @@ paths:
         '403':
           description: No autorizado
 
-  /api/bookings/user/{userId}:
+  /api/v1/bookings/user/{userId}:
 
     get:
       tags:
@@ -123,7 +123,7 @@ paths:
         '403':
           description: No autorizado
 
-  /api/bookings/{id}:
+  /api/v1/bookings/{id}:
 
     get:
       tags:
@@ -155,7 +155,7 @@ paths:
         '403':
           description: No autorizado
 
-  /api/bookings/{id}/status:
+  /api/v1/bookings/{id}/status:
 
     put:
       tags:
