@@ -7,6 +7,7 @@ import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
 import booking.domain.repository.BookingRepository;
 import booking.domain.usecase.UpdateBookingStatusUseCase;
+import booking.messaging.publisher.NotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
 
     private final BookingRepository repository;
     private final CatalogAvailabilityClient catalogAvailabilityClient;
+    private final NotificationPublisher notificationPublisher;
 
     @Override
     @Transactional
@@ -31,7 +33,13 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
         validateStatusChange(booking, newStatus);
         booking.setStatus(newStatus);
         Booking savedBooking = repository.save(booking);
-        if (newStatus == BookingStatus.CANCELLED) {
+        if (newStatus == BookingStatus.APPROVED) {
+            notificationPublisher.publishBookingApproved(savedBooking);
+        } else if (newStatus == BookingStatus.RETURNED) {
+            notificationPublisher.publishBookingReturned(savedBooking);
+        }
+        if (newStatus == BookingStatus.CANCELLED
+                || newStatus == BookingStatus.RETURNED) {
             catalogAvailabilityClient.release(
                     booking.getResourceId(),
                     "booking:" + booking.getId()
@@ -53,12 +61,6 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
 
         booking.setStatus(nextStatus);
         Booking savedBooking = repository.save(booking);
-        if (nextStatus == BookingStatus.TERMINATED) {
-            catalogAvailabilityClient.release(
-                    booking.getResourceId(),
-                    "booking:" + booking.getId()
-            );
-        }
         return savedBooking;
     }
 
@@ -70,8 +72,7 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
         if (newStatus == BookingStatus.CANCELLED) {
             if (booking.getStatus() == BookingStatus.REQUESTED
                     || booking.getStatus() == BookingStatus.APPROVED
-                    || booking.getStatus() == BookingStatus.IN_PREPARATION
-                    || booking.getStatus() == BookingStatus.READY) {
+                    || booking.getStatus() == BookingStatus.IN_PREPARATION) {
                 if (!LocalDateTime.now().isBefore(booking.getStartTime())) {
                     throw new InvalidBookingStatusException(
                             "La reserva ya alcanzó el horario de inicio y no se puede cancelar"
@@ -94,6 +95,11 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
             return;
         }
 
+        if (newStatus == BookingStatus.RETURNED
+                && booking.getStatus() == BookingStatus.IN_USE) {
+            return;
+        }
+
         throw new InvalidBookingStatusException(
                 "Transición de estado no permitida: "
                         + booking.getStatus() + " -> " + newStatus
@@ -104,26 +110,14 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
             Booking booking,
             LocalDateTime now
     ) {
-        if (booking.getStatus() == BookingStatus.CANCELLED
-                || booking.getStatus() == BookingStatus.TERMINATED
-                || booking.getStatus() == BookingStatus.RETURNED
-                || booking.getStatus() == BookingStatus.REQUESTED) {
-            return booking.getStatus();
-        }
-
-        LocalDateTime start = booking.getStartTime();
-        if (now.isBefore(start.minusMinutes(30))) {
-            return BookingStatus.APPROVED;
-        }
-        if (now.isBefore(start.minusMinutes(10))) {
-            return BookingStatus.IN_PREPARATION;
-        }
-        if (now.isBefore(start)) {
-            return BookingStatus.READY;
-        }
-        if (now.isBefore(booking.getEndTime())) {
-            return BookingStatus.IN_USE;
-        }
-        return BookingStatus.TERMINATED;
+        return switch (booking.getStatus()) {
+            case APPROVED -> now.isBefore(booking.getStartTime().minusMinutes(30))
+                    ? BookingStatus.APPROVED
+                    : BookingStatus.IN_PREPARATION;
+            case IN_PREPARATION -> now.isBefore(booking.getStartTime())
+                    ? BookingStatus.IN_PREPARATION
+                    : BookingStatus.IN_USE;
+            default -> booking.getStatus();
+        };
     }
 }

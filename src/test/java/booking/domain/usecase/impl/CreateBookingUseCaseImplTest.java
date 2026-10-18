@@ -3,20 +3,18 @@ package booking.domain.usecase.impl;
 import booking.common.exception.BookingRuleViolationException;
 import booking.data.exchange.catalog.CatalogAvailabilityClient;
 import booking.domain.model.Booking;
+import booking.domain.model.BookingStatus;
 import booking.domain.repository.BookingRepository;
-import booking.messaging.model.NotificationMessage;
 import booking.messaging.publisher.NotificationPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -55,15 +53,15 @@ class CreateBookingUseCaseImplTest {
     }
 
     @Test
-    void createsBookingWithoutNullableUserIdInNotificationPayload() {
+    void publishesRequestedCommandAfterCreatingBooking() {
         Booking created = useCase.execute(booking);
 
         assertNotNull(created.getId());
-        ArgumentCaptor<NotificationMessage> message =
-                ArgumentCaptor.forClass(NotificationMessage.class);
-        verify(notificationPublisher).publishEmail(message.capture());
-        Map<String, Object> payload = message.getValue().getPayload();
-        assertFalse(payload.containsKey("userId"));
+        org.junit.jupiter.api.Assertions.assertEquals(
+                BookingStatus.REQUESTED,
+                created.getStatus()
+        );
+        verify(notificationPublisher).publishBookingRequested(created);
         verify(catalogAvailabilityClient).reserve(7L);
     }
 
@@ -80,17 +78,30 @@ class CreateBookingUseCaseImplTest {
     }
 
     @Test
-    void restoresCapacityWhenNotificationPublishingFails() {
+    void persistsBookingWhenNotificationPublishingFails() {
+        RabbitTemplate rabbitTemplate = mock(RabbitTemplate.class);
         doThrow(new AmqpException("broker unavailable"))
-                .when(notificationPublisher)
-                .publishEmail(any(NotificationMessage.class));
+                .when(rabbitTemplate)
+                .convertAndSend(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(
+                                booking.messaging.model.NotificationMessage.class
+                        )
+                );
+        NotificationPublisher publisher = new NotificationPublisher(rabbitTemplate);
+        CreateBookingUseCaseImpl useCaseWithUnavailableBroker =
+                new CreateBookingUseCaseImpl(
+                        repository,
+                        publisher,
+                        catalogAvailabilityClient
+                );
 
-        assertThrows(AmqpException.class, () -> useCase.execute(booking));
+        Booking created = useCaseWithUnavailableBroker.execute(booking);
 
+        assertNotNull(created.getId());
         verify(catalogAvailabilityClient).reserve(7L);
-        verify(catalogAvailabilityClient).release(
-                org.mockito.ArgumentMatchers.eq(7L),
-                org.mockito.ArgumentMatchers.startsWith("booking-compensation:")
-        );
+        verify(catalogAvailabilityClient, org.mockito.Mockito.never())
+                .release(any(Long.class), any(String.class));
     }
 }

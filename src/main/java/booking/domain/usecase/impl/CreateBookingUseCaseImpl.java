@@ -6,7 +6,6 @@ import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
 import booking.domain.repository.BookingRepository;
 import booking.domain.usecase.CreateBookingUseCase;
-import booking.messaging.model.NotificationMessage;
 import booking.messaging.publisher.NotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,9 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -41,7 +37,7 @@ public class CreateBookingUseCaseImpl implements CreateBookingUseCase {
 
         try {
             Booking savedBooking = repository.save(booking);
-            notificationPublisher.publishEmail(createNotification(savedBooking));
+            notificationPublisher.publishBookingRequested(savedBooking);
             return savedBooking;
         } catch (RuntimeException exception) {
             try {
@@ -88,23 +84,4 @@ public class CreateBookingUseCaseImpl implements CreateBookingUseCase {
         }
     }
 
-    private NotificationMessage createNotification(Booking booking) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("bookingId", booking.getId());
-        payload.put("resourceId", booking.getResourceId());
-        payload.put("startTime", booking.getStartTime().toString());
-        payload.put("endTime", booking.getEndTime().toString());
-        if (booking.getUserId() != null) {
-            payload.put("userId", booking.getUserId());
-        }
-
-        return NotificationMessage.builder()
-                .type("BOOKING_CREATED")
-                .eventId(UUID.randomUUID().toString())
-                .timestamp(OffsetDateTime.now())
-                .traceId(UUID.randomUUID().toString())
-                .correlationId(booking.getId().toString())
-                .payload(payload)
-                .build();
-    }
 }

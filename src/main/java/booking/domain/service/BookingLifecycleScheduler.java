@@ -22,9 +22,7 @@ public class BookingLifecycleScheduler {
     public void advanceBookings() {
         List<Long> bookingIds = repository.findByStatuses(List.of(
                         BookingStatus.APPROVED,
-                        BookingStatus.IN_PREPARATION,
-                        BookingStatus.READY,
-                        BookingStatus.IN_USE
+                        BookingStatus.IN_PREPARATION
                 ))
                 .stream()
                 .map(booking -> booking.getId())
