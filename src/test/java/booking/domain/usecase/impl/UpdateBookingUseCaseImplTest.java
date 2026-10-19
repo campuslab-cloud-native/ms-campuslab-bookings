@@ -3,6 +3,7 @@ package booking.domain.usecase.impl;
 import booking.common.exception.InvalidBookingStatusException;
 import booking.common.exception.BookingNotFoundException;
 import booking.common.exception.BookingRuleViolationException;
+import booking.config.BookingTimeConfiguration;
 import booking.data.exchange.catalog.CatalogAvailabilityClient;
 import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
@@ -10,6 +11,8 @@ import booking.domain.repository.BookingRepository;
 import booking.messaging.publisher.NotificationPublisher;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -23,6 +26,9 @@ import static org.mockito.Mockito.when;
 
 class UpdateBookingUseCaseImplTest {
 
+    private static final Clock BOOKING_CLOCK = Clock.system(
+            BookingTimeConfiguration.ZONE_ID
+    );
     private final BookingRepository repository = mock(BookingRepository.class);
     private final CatalogAvailabilityClient catalogAvailabilityClient =
             mock(CatalogAvailabilityClient.class);
@@ -32,12 +38,13 @@ class UpdateBookingUseCaseImplTest {
             new UpdateBookingUseCaseImpl(
                     repository,
                     catalogAvailabilityClient,
-                    notificationPublisher
+                    notificationPublisher,
+                    BOOKING_CLOCK
             );
 
     @Test
     void startsPreparationTwentyMinutesBeforeUse() {
-        LocalDateTime start = LocalDateTime.now().plusMinutes(20);
+        LocalDateTime start = LocalDateTime.now(BOOKING_CLOCK).plusMinutes(20);
         Booking booking = booking(BookingStatus.APPROVED, start, start.plusHours(1));
         when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
         when(repository.save(booking)).thenReturn(booking);
@@ -49,7 +56,7 @@ class UpdateBookingUseCaseImplTest {
 
     @Test
     void keepsBookingInPreparationUntilUseStarts() {
-        LocalDateTime start = LocalDateTime.now().plusMinutes(5);
+        LocalDateTime start = LocalDateTime.now(BOOKING_CLOCK).plusMinutes(5);
         Booking booking = booking(
                 BookingStatus.IN_PREPARATION,
                 start,
@@ -65,7 +72,7 @@ class UpdateBookingUseCaseImplTest {
 
     @Test
     void advancesPreparationToInUseWhenUseStarts() {
-        LocalDateTime start = LocalDateTime.now().minusMinutes(1);
+        LocalDateTime start = LocalDateTime.now(BOOKING_CLOCK).minusMinutes(1);
         Booking booking = booking(
                 BookingStatus.IN_PREPARATION,
                 start,
@@ -80,8 +87,79 @@ class UpdateBookingUseCaseImplTest {
     }
 
     @Test
+    void lifecycleUsesSantiagoTimeDuringDaylightSaving() {
+        Clock daylightSavingClock = Clock.fixed(
+                Instant.parse("2026-10-18T17:00:00Z"),
+                BookingTimeConfiguration.ZONE_ID
+        );
+        UpdateBookingUseCaseImpl daylightSavingUseCase =
+                new UpdateBookingUseCaseImpl(
+                        repository,
+                        catalogAvailabilityClient,
+                        notificationPublisher,
+                        daylightSavingClock
+                );
+        assertEquals(
+                LocalDateTime.parse("2026-10-18T14:00:00"),
+                LocalDateTime.now(daylightSavingClock)
+        );
+        LocalDateTime start = LocalDateTime.parse("2026-10-18T15:00:00");
+        Booking approved = booking(
+                BookingStatus.APPROVED,
+                start,
+                start.plusHours(1)
+        );
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(approved));
+
+        daylightSavingUseCase.advanceAutomatically(1L);
+
+        assertEquals(BookingStatus.APPROVED, approved.getStatus());
+
+        Booking inPreparation = booking(
+                BookingStatus.IN_PREPARATION,
+                start,
+                start.plusHours(1)
+        );
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(inPreparation));
+
+        daylightSavingUseCase.advanceAutomatically(1L);
+
+        assertEquals(BookingStatus.IN_PREPARATION, inPreparation.getStatus());
+    }
+
+    @Test
+    void lifecycleUsesSantiagoTimeDuringStandardTime() {
+        Clock standardTimeClock = Clock.fixed(
+                Instant.parse("2026-07-18T19:00:00Z"),
+                BookingTimeConfiguration.ZONE_ID
+        );
+        UpdateBookingUseCaseImpl standardTimeUseCase =
+                new UpdateBookingUseCaseImpl(
+                        repository,
+                        catalogAvailabilityClient,
+                        notificationPublisher,
+                        standardTimeClock
+                );
+        assertEquals(
+                LocalDateTime.parse("2026-07-18T15:00:00"),
+                LocalDateTime.now(standardTimeClock)
+        );
+        LocalDateTime start = LocalDateTime.parse("2026-07-18T15:00:00");
+        Booking inPreparation = booking(
+                BookingStatus.IN_PREPARATION,
+                start,
+                start.plusHours(1)
+        );
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(inPreparation));
+
+        standardTimeUseCase.advanceAutomatically(1L);
+
+        assertEquals(BookingStatus.IN_USE, inPreparation.getStatus());
+    }
+
+    @Test
     void keepsBookingInUseAfterEndTimeUntilItIsReturned() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(BOOKING_CLOCK);
         Booking booking = booking(
                 BookingStatus.IN_USE,
                 now.minusHours(1),
@@ -98,7 +176,7 @@ class UpdateBookingUseCaseImplTest {
 
     @Test
     void cancelsPreparationBookingAndReleasesCapacity() {
-        LocalDateTime start = LocalDateTime.now().plusMinutes(5);
+        LocalDateTime start = LocalDateTime.now(BOOKING_CLOCK).plusMinutes(5);
         Booking booking = booking(
                 BookingStatus.IN_PREPARATION,
                 start,
@@ -115,7 +193,7 @@ class UpdateBookingUseCaseImplTest {
 
     @Test
     void publishesPreparationCommandWhenBookingIsApproved() {
-        LocalDateTime start = LocalDateTime.now().plusHours(1);
+        LocalDateTime start = LocalDateTime.now(BOOKING_CLOCK).plusHours(1);
         Booking booking = booking(BookingStatus.REQUESTED, start, start.plusHours(1));
         when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
         when(repository.save(booking)).thenReturn(booking);
@@ -130,8 +208,8 @@ class UpdateBookingUseCaseImplTest {
     void adminCanMoveApprovedBookingToPreparation() {
         Booking booking = booking(
                 BookingStatus.APPROVED,
-                LocalDateTime.now().plusHours(1),
-                LocalDateTime.now().plusHours(2)
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(1),
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(2)
         );
         when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
         when(repository.save(booking)).thenReturn(booking);
@@ -147,8 +225,8 @@ class UpdateBookingUseCaseImplTest {
     void adminCanMovePreparationBookingToInUse() {
         Booking booking = booking(
                 BookingStatus.IN_PREPARATION,
-                LocalDateTime.now().plusHours(1),
-                LocalDateTime.now().plusHours(2)
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(1),
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(2)
         );
         when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
         when(repository.save(booking)).thenReturn(booking);
@@ -163,8 +241,8 @@ class UpdateBookingUseCaseImplTest {
     void adminCanReturnInUseBookingAndPublishesVoucherCommand() {
         Booking booking = booking(
                 BookingStatus.IN_USE,
-                LocalDateTime.now().minusHours(1),
-                LocalDateTime.now().plusHours(1)
+                LocalDateTime.now(BOOKING_CLOCK).minusHours(1),
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(1)
         );
         when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
         when(repository.save(booking)).thenReturn(booking);
@@ -180,8 +258,8 @@ class UpdateBookingUseCaseImplTest {
     void adminCanApproveBookingAndPublishesPreparationCommand() {
         Booking booking = booking(
                 BookingStatus.REQUESTED,
-                LocalDateTime.now().plusHours(1),
-                LocalDateTime.now().plusHours(2)
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(1),
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(2)
         );
         when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
         when(repository.save(booking)).thenReturn(booking);
@@ -205,8 +283,8 @@ class UpdateBookingUseCaseImplTest {
     void adminUpdateRejectsMissingStatus() {
         Booking booking = booking(
                 BookingStatus.APPROVED,
-                LocalDateTime.now().plusHours(1),
-                LocalDateTime.now().plusHours(2)
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(1),
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(2)
         );
         when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
 
@@ -220,8 +298,8 @@ class UpdateBookingUseCaseImplTest {
     void normalStatusEndpointStillRejectsLifecycleTransition() {
         Booking booking = booking(
                 BookingStatus.APPROVED,
-                LocalDateTime.now().plusHours(1),
-                LocalDateTime.now().plusHours(2)
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(1),
+                LocalDateTime.now(BOOKING_CLOCK).plusHours(2)
         );
         when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(booking));
 
@@ -236,7 +314,7 @@ class UpdateBookingUseCaseImplTest {
 
     @Test
     void publishesVoucherCommandWhenInUseBookingIsReturned() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(BOOKING_CLOCK);
         Booking booking = booking(
                 BookingStatus.IN_USE,
                 now.minusMinutes(30),
@@ -253,7 +331,7 @@ class UpdateBookingUseCaseImplTest {
 
     @Test
     void doesNotAllowCancellingBookingOnceUseHasStarted() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(BOOKING_CLOCK);
         Booking booking = booking(
                 BookingStatus.IN_USE,
                 now.minusMinutes(1),

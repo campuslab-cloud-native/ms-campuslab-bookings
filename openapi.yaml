@@ -255,10 +255,12 @@ components:
           format: int64
         startTime:
           type: string
-          format: date-time
+          description: Hora local de America/Santiago, sin offset ni sufijo Z.
+          example: "2026-10-18T15:00:00"
         endTime:
           type: string
-          format: date-time
+          description: Hora local de America/Santiago, sin offset ni sufijo Z.
+          example: "2026-10-18T16:00:00"
 
     UpdateBookingStatusRequest:
       type: object
@@ -281,15 +283,18 @@ components:
           type: string
         startTime:
           type: string
-          format: date-time
+          description: Hora local de America/Santiago, sin offset ni sufijo Z.
+          example: "2026-10-18T15:00:00"
         endTime:
           type: string
-          format: date-time
+          description: Hora local de America/Santiago, sin offset ni sufijo Z.
+          example: "2026-10-18T16:00:00"
         status:
           $ref: '#/components/schemas/BookingStatus'
         createdAt:
           type: string
-          format: date-time
+          description: Hora local de America/Santiago, sin offset ni sufijo Z.
+          example: "2026-10-17T12:00:00"
 
     BookingStatus:
       type: string

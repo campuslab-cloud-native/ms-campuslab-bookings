@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -25,6 +26,7 @@ public class CreateBookingUseCaseImpl implements CreateBookingUseCase {
     private final BookingRepository repository;
     private final NotificationPublisher notificationPublisher;
     private final CatalogAvailabilityClient catalogAvailabilityClient;
+    private final Clock bookingClock;
 
     @Override
     @Transactional
@@ -33,7 +35,7 @@ public class CreateBookingUseCaseImpl implements CreateBookingUseCase {
         catalogAvailabilityClient.reserve(booking.getResourceId());
 
         booking.setStatus(BookingStatus.REQUESTED);
-        booking.setCreatedAt(LocalDateTime.now());
+        booking.setCreatedAt(LocalDateTime.now(bookingClock));
 
         try {
             Booking savedBooking = repository.save(booking);
@@ -58,7 +60,7 @@ public class CreateBookingUseCaseImpl implements CreateBookingUseCase {
     }
 
     private void validateBookingTime(Booking booking) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(bookingClock);
         LocalDate today = now.toLocalDate();
 
         if (booking.getStartTime().toLocalDate().isBefore(today)) {

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.Clock;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +23,7 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
     private final BookingRepository repository;
     private final CatalogAvailabilityClient catalogAvailabilityClient;
     private final NotificationPublisher notificationPublisher;
+    private final Clock bookingClock;
 
     @Override
     @Transactional
@@ -72,7 +74,10 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
         Booking booking = repository.findByIdForUpdate(id)
                 .orElseThrow(() -> new BookingNotFoundException(id));
 
-        BookingStatus nextStatus = scheduledStatus(booking, LocalDateTime.now());
+        BookingStatus nextStatus = scheduledStatus(
+                booking,
+                LocalDateTime.now(bookingClock)
+        );
         if (nextStatus == booking.getStatus()) {
             return booking;
         }
@@ -91,7 +96,7 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
             if (booking.getStatus() == BookingStatus.REQUESTED
                     || booking.getStatus() == BookingStatus.APPROVED
                     || booking.getStatus() == BookingStatus.IN_PREPARATION) {
-                if (!LocalDateTime.now().isBefore(booking.getStartTime())) {
+                if (!LocalDateTime.now(bookingClock).isBefore(booking.getStartTime())) {
                     throw new InvalidBookingStatusException(
                             "La reserva ya alcanzó el horario de inicio y no se puede cancelar"
                     );
@@ -105,7 +110,7 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
 
         if (newStatus == BookingStatus.APPROVED
                 && booking.getStatus() == BookingStatus.REQUESTED) {
-            if (!booking.getStartTime().isAfter(LocalDateTime.now())) {
+            if (!booking.getStartTime().isAfter(LocalDateTime.now(bookingClock))) {
                 throw new InvalidBookingStatusException(
                         "No se puede aprobar una reserva cuyo horario de uso ya comenzó"
                 );
