@@ -7,6 +7,7 @@ import booking.data.exchange.catalog.CatalogAvailabilityClient;
 import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
 import booking.domain.repository.BookingRepository;
+import booking.domain.service.BookingKafkaEventService;
 import booking.domain.usecase.UpdateBookingStatusUseCase;
 import booking.messaging.publisher.NotificationPublisher;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
     private final CatalogAvailabilityClient catalogAvailabilityClient;
     private final NotificationPublisher notificationPublisher;
     private final Clock bookingClock;
+    private final BookingKafkaEventService bookingKafkaEventService;
 
     @Override
     @Transactional
@@ -51,6 +53,9 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
     }
 
     private Booking persistStatus(Booking booking, BookingStatus newStatus) {
+        if (booking.getStatus() == newStatus) {
+            return booking;
+        }
         booking.setStatus(newStatus);
         Booking savedBooking = repository.save(booking);
         if (newStatus == BookingStatus.APPROVED) {
@@ -65,6 +70,7 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
                     "booking:" + booking.getId()
             );
         }
+        bookingKafkaEventService.bookingStatusChanged(savedBooking);
         return savedBooking;
     }
 
@@ -83,7 +89,11 @@ public class UpdateBookingUseCaseImpl implements UpdateBookingStatusUseCase {
         }
 
         booking.setStatus(nextStatus);
+
         Booking savedBooking = repository.save(booking);
+
+        bookingKafkaEventService.bookingStatusChanged(savedBooking);
+
         return savedBooking;
     }
 

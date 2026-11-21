@@ -5,12 +5,14 @@ import booking.data.exchange.catalog.CatalogAvailabilityClient;
 import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
 import booking.domain.repository.BookingRepository;
+import booking.domain.service.BookingKafkaEventService;
 import booking.domain.usecase.CreateBookingUseCase;
 import booking.messaging.publisher.NotificationPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.time.Duration;
 import java.time.Clock;
@@ -27,6 +29,7 @@ public class CreateBookingUseCaseImpl implements CreateBookingUseCase {
     private final NotificationPublisher notificationPublisher;
     private final CatalogAvailabilityClient catalogAvailabilityClient;
     private final Clock bookingClock;
+    private final BookingKafkaEventService bookingKafkaEventService;
 
     @Override
     @Transactional
@@ -39,8 +42,12 @@ public class CreateBookingUseCaseImpl implements CreateBookingUseCase {
 
         try {
             Booking savedBooking = repository.save(booking);
-            notificationPublisher.publishBookingRequested(savedBooking);
-            return savedBooking;
+
+                notificationPublisher.publishBookingRequested(savedBooking);
+
+                bookingKafkaEventService.bookingCreated(savedBooking);
+
+                return savedBooking;
         } catch (RuntimeException exception) {
             try {
                 catalogAvailabilityClient.release(
