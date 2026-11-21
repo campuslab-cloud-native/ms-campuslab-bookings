@@ -6,6 +6,7 @@ import booking.data.exchange.catalog.CatalogAvailabilityClient;
 import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
 import booking.domain.repository.BookingRepository;
+import booking.domain.service.BookingKafkaEventService;
 import booking.messaging.publisher.NotificationPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,12 +39,15 @@ class CreateBookingUseCaseImplTest {
             mock(NotificationPublisher.class);
     private final CatalogAvailabilityClient catalogAvailabilityClient =
             mock(CatalogAvailabilityClient.class);
+    private final BookingKafkaEventService bookingKafkaEventService =
+            mock(BookingKafkaEventService.class);
     private final CreateBookingUseCaseImpl useCase =
             new CreateBookingUseCaseImpl(
                     repository,
                     notificationPublisher,
                     catalogAvailabilityClient,
-                    bookingClock
+                    bookingClock,
+                    bookingKafkaEventService
             );
 
     private Booking booking;
@@ -72,6 +76,7 @@ class CreateBookingUseCaseImplTest {
                 created.getStatus()
         );
         verify(notificationPublisher).publishBookingRequested(created);
+        verify(bookingKafkaEventService).bookingCreated(created);
         verify(catalogAvailabilityClient).reserve(7L);
     }
 
@@ -102,7 +107,8 @@ class CreateBookingUseCaseImplTest {
                 repository,
                 notificationPublisher,
                 catalogAvailabilityClient,
-                winterClock
+                winterClock,
+                bookingKafkaEventService
         );
         booking.setStartTime(LocalDateTime.parse("2026-07-18T15:00:00"));
         booking.setEndTime(LocalDateTime.parse("2026-07-18T16:00:00"));
@@ -162,7 +168,8 @@ class CreateBookingUseCaseImplTest {
                         repository,
                         publisher,
                         catalogAvailabilityClient,
-                        bookingClock
+                        bookingClock,
+                        bookingKafkaEventService
                 );
 
         Booking created = useCaseWithUnavailableBroker.execute(booking);

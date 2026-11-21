@@ -8,6 +8,7 @@ import booking.data.exchange.catalog.CatalogAvailabilityClient;
 import booking.domain.model.Booking;
 import booking.domain.model.BookingStatus;
 import booking.domain.repository.BookingRepository;
+import booking.domain.service.BookingKafkaEventService;
 import booking.messaging.publisher.NotificationPublisher;
 import org.junit.jupiter.api.Test;
 
@@ -34,12 +35,15 @@ class UpdateBookingUseCaseImplTest {
             mock(CatalogAvailabilityClient.class);
     private final NotificationPublisher notificationPublisher =
             mock(NotificationPublisher.class);
+    private final BookingKafkaEventService bookingKafkaEventService =
+            mock(BookingKafkaEventService.class);
     private final UpdateBookingUseCaseImpl useCase =
             new UpdateBookingUseCaseImpl(
                     repository,
                     catalogAvailabilityClient,
                     notificationPublisher,
-                    BOOKING_CLOCK
+                    BOOKING_CLOCK,
+                    bookingKafkaEventService
             );
 
     @Test
@@ -52,6 +56,7 @@ class UpdateBookingUseCaseImplTest {
         useCase.advanceAutomatically(1L);
 
         assertEquals(BookingStatus.IN_PREPARATION, booking.getStatus());
+        verify(bookingKafkaEventService).bookingStatusChanged(booking);
     }
 
     @Test
@@ -97,7 +102,8 @@ class UpdateBookingUseCaseImplTest {
                         repository,
                         catalogAvailabilityClient,
                         notificationPublisher,
-                        daylightSavingClock
+                        daylightSavingClock,
+                        bookingKafkaEventService
                 );
         assertEquals(
                 LocalDateTime.parse("2026-10-18T14:00:00"),
@@ -138,7 +144,8 @@ class UpdateBookingUseCaseImplTest {
                         repository,
                         catalogAvailabilityClient,
                         notificationPublisher,
-                        standardTimeClock
+                        standardTimeClock,
+                        bookingKafkaEventService
                 );
         assertEquals(
                 LocalDateTime.parse("2026-07-18T15:00:00"),
@@ -189,6 +196,7 @@ class UpdateBookingUseCaseImplTest {
 
         assertEquals(BookingStatus.CANCELLED, booking.getStatus());
         verify(catalogAvailabilityClient).release(7L, "booking:1");
+        verify(bookingKafkaEventService).bookingStatusChanged(booking);
     }
 
     @Test
@@ -202,6 +210,7 @@ class UpdateBookingUseCaseImplTest {
 
         assertEquals(BookingStatus.APPROVED, booking.getStatus());
         verify(notificationPublisher).publishBookingApproved(booking);
+        verify(bookingKafkaEventService).bookingStatusChanged(booking);
     }
 
     @Test
