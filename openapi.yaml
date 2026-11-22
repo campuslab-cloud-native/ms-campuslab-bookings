@@ -1,8 +1,12 @@
 openapi: 3.0.3
 
 info:
-  title: CampusLab Bookings API
+  title: CampusLab Bookings Internal API
   version: 1.0.0
+  description: >-
+    API interna de reservas. Este microservicio no implementa autenticación ni
+    autorización HTTP; la autenticación JWT y los roles de las rutas públicas
+    se aplican en ms-campuslab-bff.
 
 servers:
   - url: http://localhost:8081
@@ -11,21 +15,17 @@ tags:
   - name: Bookings
 
 paths:
-
   /api/v1/bookings:
-
     post:
       tags:
         - Bookings
       summary: Crear reserva
       operationId: createBooking
-      security:
-        - bearerAuth: []
       parameters:
         - name: userId
           in: query
           required: false
-          description: Correo electrónico del usuario autenticado, asignado por el BFF
+          description: Identificador recibido por el BFF desde el usuario autenticado
           schema:
             type: string
       requestBody:
@@ -47,39 +47,30 @@ paths:
           description: Recurso inexistente
         '409':
           description: El recurso no tiene cupos disponibles
-        '401':
-          description: No autenticado
-        '403':
-          description: No autorizado
 
     get:
       tags:
         - Bookings
       summary: Listar reservas
       operationId: getBookings
-      security:
-        - bearerAuth: []
       parameters:
         - name: status
           in: query
           required: false
           schema:
             $ref: '#/components/schemas/BookingStatus'
-
         - name: from
           in: query
           required: false
           schema:
             type: string
             format: date
-
         - name: to
           in: query
           required: false
           schema:
             type: string
             format: date
-
       responses:
         '200':
           description: Reservas encontradas
@@ -89,20 +80,13 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/BookingResponse'
-        '401':
-          description: No autenticado
-        '403':
-          description: No autorizado
 
   /api/v1/bookings/user/{userId}:
-
     get:
       tags:
         - Bookings
       summary: Listar reservas de un usuario
       operationId: getBookingsByUserId
-      security:
-        - bearerAuth: []
       parameters:
         - name: userId
           in: path
@@ -118,21 +102,13 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/BookingResponse'
-        '401':
-          description: No autenticado
-        '403':
-          description: No autorizado
 
   /api/v1/bookings/{id}:
-
     get:
       tags:
         - Bookings
       summary: Obtener reserva por ID
       operationId: getBookingById
-      security:
-        - bearerAuth: []
-
       parameters:
         - name: id
           in: path
@@ -140,7 +116,6 @@ paths:
           schema:
             type: integer
             format: int64
-
       responses:
         '200':
           description: Reserva encontrada
@@ -150,21 +125,13 @@ paths:
                 $ref: '#/components/schemas/BookingResponse'
         '404':
           description: Reserva no encontrada
-        '401':
-          description: No autenticado
-        '403':
-          description: No autorizado
 
   /api/v1/bookings/{id}/status:
-
     put:
       tags:
         - Bookings
       summary: Cambiar estado de reserva
       operationId: updateBookingStatus
-      security:
-        - bearerAuth: []
-
       parameters:
         - name: id
           in: path
@@ -172,14 +139,12 @@ paths:
           schema:
             type: integer
             format: int64
-
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/UpdateBookingStatusRequest'
-
       responses:
         '200':
           description: Estado actualizado
@@ -189,25 +154,18 @@ paths:
                 $ref: '#/components/schemas/BookingResponse'
         '400':
           description: Cambio de estado inválido
-        '409':
-          description: Transición de estado no permitida
         '404':
           description: Reserva no encontrada
-        '401':
-          description: No autenticado
-        '403':
-          description: No autorizado
+        '409':
+          description: Transición de estado no permitida
 
   /api/v1/bookings/{id}/admin-status:
-
     put:
       tags:
         - Bookings
       summary: Actualizar manualmente el estado de una reserva
-      description: Cambio administrativo que no aplica las restricciones normales de transición; solo acepta estados definidos por el dominio.
+      description: Cambio administrativo que acepta estados definidos por el dominio.
       operationId: updateBookingAdminStatus
-      security:
-        - bearerAuth: []
       parameters:
         - name: id
           in: path
@@ -234,15 +192,7 @@ paths:
           description: Reserva no encontrada
 
 components:
-
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
   schemas:
-
     CreateBookingRequest:
       type: object
       required:
@@ -256,11 +206,11 @@ components:
         startTime:
           type: string
           description: Hora local de America/Santiago, sin offset ni sufijo Z.
-          example: "2026-10-18T15:00:00"
+          example: '2026-10-18T15:00:00'
         endTime:
           type: string
           description: Hora local de America/Santiago, sin offset ni sufijo Z.
-          example: "2026-10-18T16:00:00"
+          example: '2026-10-18T16:00:00'
 
     UpdateBookingStatusRequest:
       type: object
@@ -269,6 +219,16 @@ components:
       properties:
         status:
           $ref: '#/components/schemas/BookingStatus'
+
+    BookingStatus:
+      type: string
+      enum:
+        - REQUESTED
+        - APPROVED
+        - IN_PREPARATION
+        - IN_USE
+        - RETURNED
+        - CANCELLED
 
     BookingResponse:
       type: object
@@ -284,24 +244,14 @@ components:
         startTime:
           type: string
           description: Hora local de America/Santiago, sin offset ni sufijo Z.
-          example: "2026-10-18T15:00:00"
+          example: '2026-10-18T15:00:00'
         endTime:
           type: string
           description: Hora local de America/Santiago, sin offset ni sufijo Z.
-          example: "2026-10-18T16:00:00"
+          example: '2026-10-18T16:00:00'
         status:
           $ref: '#/components/schemas/BookingStatus'
         createdAt:
           type: string
           description: Hora local de America/Santiago, sin offset ni sufijo Z.
-          example: "2026-10-17T12:00:00"
-
-    BookingStatus:
-      type: string
-      enum:
-        - REQUESTED
-        - APPROVED
-        - IN_PREPARATION
-        - IN_USE
-        - RETURNED
-        - CANCELLED
+          example: '2026-10-17T12:00:00'
